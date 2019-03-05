@@ -1,20 +1,18 @@
 import java.util.*;
+import symbol.*;
 import syntaxtree.*;
 import visitor.*;
-import symbol.*;
 
 // Visitor for type-checking
 public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 	private SymbolTable sTable;			// General Symbol table for all classes
-	// private ErrorMsg error;				// Record all error messages
-	private boolean anyError;
+	private boolean anyError;			// True if there is any error in source code
 	private ClassSymbol currClass;		// Used during construction, record current class
 	private MethodSymbol currMethod;	// Used during construction, record current method
 	
 	// Default constructor
 	public TypeCheckVisitor(SymbolTable _st) {
 		this.sTable = _st;
-		// this.error = new ErrorMsg();
 		setError(false);
 		setCurrentClass(null);
 		setCurrentMethod(null);
@@ -47,7 +45,6 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 	
 	// Check if there exists any error
 	public boolean isAnyError() {
-		// return this.error.isAnyError();
 		return this.anyError;
 	}
 	
@@ -64,7 +61,6 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 					VarSymbol var = this.currClass.findField(_name);
 					if (var == null) {
 						setError(true);
-						// this.error.complain("The field " + _name + " in " + this.currClass.getName() + " is not defined!");
 					} else {
 						type = var.getType();
 					}
@@ -74,7 +70,6 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 					VarSymbol var_fld = this.currClass.findField(_name);
 					if (param == null && var_mtd == null && var_fld == null) {
 						setError(true);
-						// this.error.complain("The variable " + _name + " in " + this.currMethod.getName() + " is not defined!");
 					} else if (param != null) {
 						type = param.getType();
 					} else if (var_mtd != null) {
@@ -98,7 +93,6 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 			e.nextElement().accept(this);
 			_count++;
 		}
-		_ret = Integer.toString(_count);
 		return _ret;
 	}
 
@@ -228,7 +222,6 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 		ClassSymbol _class = this.sTable.findClass(className);
 		if (_class == null) {
 			setError(true);
-			// error.complain("The class " + className + " is not defined!");
 		} else {
 			setCurrentClass(_class);
 			n.f2.accept(this);
@@ -257,17 +250,15 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 		ClassSymbol _class = this.sTable.findClass(className);
 		if (_class == null) {
 			setError(true);
-			// error.complain("The class " + className + " is not defined!");
 		} else {
 			n.f2.accept(this);
 			String baseClassName = n.f3.accept(this);
 			ClassSymbol _baseClass = this.sTable.findClass(baseClassName);
-			if (_baseClass == null) {
+			if (_baseClass == null || 
+				!_baseClass.getName().equals(_class.getBaseClass().getName())) {
 				setError(true);
-				// error.complain("The class " + baseClassName + " is not defined!");
 			} else {
 				setCurrentClass(_class);
-				this.currClass.SetBaseClass(_baseClass);
 				n.f4.accept(this);
 				n.f5.accept(this);
 				n.f6.accept(this);
@@ -323,7 +314,6 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 		String rType = getIDType(n.f10.accept(this));
 		if (!rType.equals(this.currMethod.getReturnType())) {
 			setError(true);
-			// this.error.complain("The return type in " + this.currMethod.getName() + " does not match!");
 		}
 		
 		n.f11.accept(this);
@@ -383,7 +373,7 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 	 * f2 -> "]"
 	 */
 	public String visit(ArrayType n) {
-		String _ret="int[]";
+		String _ret = "int[]";
 		n.f0.accept(this);
 		n.f1.accept(this);
 		n.f2.accept(this);
@@ -394,7 +384,7 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 	 * f0 -> "boolean"
 	 */
 	public String visit(BooleanType n) {
-		String _ret="boolean";
+		String _ret = "boolean";
 		n.f0.accept(this);
 		return _ret;
 	}
@@ -403,7 +393,7 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 	 * f0 -> "int"
 	 */
 	public String visit(IntegerType n) {
-		String _ret="int";
+		String _ret = "int";
 		n.f0.accept(this);
 		return _ret;
 	}
@@ -450,7 +440,6 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 			String rightType = getIDType(n.f2.accept(this));
 			if (rightType != null && !leftType.equals(rightType)) {
 				setError(true);
-				// this.error.complain("The type of right doesn't match the left one in " + this.currClass.getName());
 			}
 			n.f3.accept(this);
 		}
@@ -472,20 +461,17 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 		String arrayType = getIDType(arrayName);
 		if (!arrayType.equals("int[]")) {
 			setError(true);
-			// this.error.complain(arrayName + " is not an array!");
 		} else {
 			n.f1.accept(this);
 			String idxType = getIDType(n.f2.accept(this));
 			if (!idxType.equals("int")) {
 				setError(true);
-				// this.error.complain("The index of " + arrayName + " is not an integer!");
 			} else {
 				n.f3.accept(this);
 				n.f4.accept(this);
 				String valueType = getIDType(n.f5.accept(this));
 				if (!valueType.equals("int")) {
 					setError(true);
-					// this.error.complain("You should assign " + arrayName + " an integer!");
 				} else {
 					n.f6.accept(this);
 				}
@@ -510,8 +496,7 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 		String conditionType = getIDType(n.f2.accept(this));
 		if (!conditionType.equals("boolean")) {
 			setError(true);
-			// this.error.complain("Condition is not valid");
-		} {
+		} else {
 			n.f3.accept(this);
 			n.f4.accept(this);
 			n.f5.accept(this);
@@ -534,8 +519,7 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 		String conditionType = getIDType(n.f2.accept(this));
 		if (!conditionType.equals("boolean")) {
 			setError(true);
-			// this.error.complain("Condition is not valid");
-		} {
+		} else {
 			n.f3.accept(this);
 			n.f4.accept(this);
 		}
@@ -556,7 +540,6 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 		String exprType = getIDType(n.f2.accept(this));
 		if (!exprType.equals("int")) {
 			setError(true);
-			// this.error.complain("This value cannot be printed");
 		} else {
 			n.f3.accept(this);
 			n.f4.accept(this);
@@ -590,13 +573,8 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 		String leftType = getIDType(n.f0.accept(this));
 		n.f1.accept(this);
 		String rightType = getIDType(n.f2.accept(this));
-		if (!leftType.equals("boolean")) {
+		if (!leftType.equals("boolean") || !rightType.equals("boolean")) {
 			setError(true);
-			// this.error.complain("The left part of and-expression should be boolean!");
-		}
-		if (!rightType.equals("boolean")) {
-			setError(true);
-			// this.error.complain("The right part of and-expression should be boolean!");
 		}
 		return _ret;
 	}
@@ -611,13 +589,8 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 		String leftType = getIDType(n.f0.accept(this));
 		n.f1.accept(this);
 		String rightType = getIDType(n.f2.accept(this));
-		if (!leftType.equals("int")) {
+		if (!leftType.equals("int") || !rightType.equals("int")) {
 			setError(true);
-			// this.error.complain("The left part of compare-expression should be an integer!");
-		}
-		if (!rightType.equals("int")) {
-			setError(true);
-			// this.error.complain("The right part of compare-expression should be an integer!");
 		}
 		return _ret;
 	}
@@ -632,13 +605,8 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 		String leftType = getIDType(n.f0.accept(this));
 		n.f1.accept(this);
 		String rightType = getIDType(n.f2.accept(this));
-		if (!leftType.equals("int")) {
+		if (!leftType.equals("int") || !rightType.equals("int")) {
 			setError(true);
-			// this.error.complain("The left part of plus-expression should be an integer!");
-		}
-		if (!rightType.equals("int")) {
-			setError(true);
-			// this.error.complain("The right part of plus-expression should be an integer!");
 		}
 		return _ret;
 	}
@@ -653,13 +621,8 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 		String leftType = getIDType(n.f0.accept(this));
 		n.f1.accept(this);
 		String rightType = getIDType(n.f2.accept(this));
-		if (!leftType.equals("int")) {
+		if (!leftType.equals("int") || !rightType.equals("int")) {
 			setError(true);
-			// this.error.complain("The left part of minus-expression should be an integer!");
-		}
-		if (!rightType.equals("int")) {
-			setError(true);
-			// this.error.complain("The right part of minus-expression should be an integer!");
 		}
 		return _ret;
 	}
@@ -674,13 +637,8 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 		String leftType = getIDType(n.f0.accept(this));
 		n.f1.accept(this);
 		String rightType = getIDType(n.f2.accept(this));
-		if (!leftType.equals("int")) {
+		if (!leftType.equals("int") || !rightType.equals("int")) {
 			setError(true);
-			// this.error.complain("The left part of times-expression should be an integer!");
-		}
-		if (!rightType.equals("int")) {
-			setError(true);
-			// this.error.complain("The right part of times-expression should be an integer!");
 		}
 		return _ret;
 	}
@@ -694,16 +652,15 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 	public String visit(ArrayLookup n) {
 		String _ret="int";
 		String arrayType = getIDType(n.f0.accept(this));
-		n.f1.accept(this);
-		String idxType = getIDType(n.f2.accept(this));
-		n.f3.accept(this);
 		if (!arrayType.equals("int[]")) {
 			setError(true);
-			// this.error.complain("You cannot visit a non-array variable by index!");
-		}
-		if (!idxType.equals("int")) {
-			setError(true);
-			// this.error.complain("The index should be an integer!");
+		} else {
+			n.f1.accept(this);
+			String idxType = getIDType(n.f2.accept(this));
+			n.f3.accept(this);
+			if (!idxType.equals("int")) {
+				setError(true);
+			}
 		}
 		return _ret;
 	}
@@ -720,7 +677,6 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 		n.f2.accept(this);
 		if (!arrayType.equals("int[]")) {
 			setError(true);
-			// this.error.complain("You cannot visit a non-array variable by index!");
 		}
 		return _ret;
 	}
@@ -739,29 +695,25 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 		n.f1.accept(this);
 		if (className == null) {
 			setError(true);
-			// error.complain("This variable is not a instance of any class!");
 		} else {
 			String mtdName = n.f2.accept(this);
 			MethodSymbol mtd = this.sTable.findClass(className).findMethod(mtdName);
 			if (mtd == null) {
 				setError(true);
-				// this.error.complain("The method " + mtdName + " does not exist in " + className);
 			} else {
 				_ret = mtd.getReturnType();
 				n.f3.accept(this);
 				n.f4.accept(this);
 				n.f5.accept(this);
-				
+				// Get two lists contain the sequence of types for comparing
 				ArrayList<String> argTypeList = exprListVisit(n.f4);
 				ArrayList<String> paramTypeList = mtd.getTypeSequence();
-				if (argTypeList.size() != paramTypeList.size()) {
+				if (argTypeList.size() != paramTypeList.size()) {	// If the size does not match
 					setError(true);
-					// this.error.complain("The number of arguments does not match!");
-				} else {
+				} else {	// Then check the types one by one
 					for (int i = 0; i < paramTypeList.size(); ++i) {
 						if (!isEquivType(argTypeList.get(i), paramTypeList.get(i))) {
 							setError(true);
-							// this.error.complain("The " + Integer.toString(i+1) + "-th argument of " + mtd.getName() + " has error type. ");
 						}
 					}
 				}
@@ -775,24 +727,25 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 		if (paraType.equals("int") || paraType.equals("boolean") || paraType.equals("int[]")) {
 			return argType.equals(paraType);	// Fundamental types, just compare them
 		} else {	// Classes, check inheritance
-			if (argType.equals(paraType)) {
+			if (argType.equals(paraType)) {	// If they are just equal
 				return true;
-			} else {
+			} else {	// Try to find base class of the argument
 				ClassSymbol baseType = this.sTable.findClass(argType).getBaseClass();
-				if (baseType == null) {
+				if (baseType == null) {	// If no base class
 					return false;
-				} else if (baseType.getName() == paraType) {
+				} else if (baseType.getName() == paraType) {	// If base class matches
 					return true;
+				} else {	// recursively check base class's base class
+					return isEquivType(baseType.getName(), paraType);
 				}
 			}
 		}
-		return true;
 	}
 	
 	// Return an arraylist containing an array of types of arguments
 	private ArrayList<String> exprListVisit(NodeOptional n) {
 		ArrayList<String> typelist = new ArrayList<String>();
-		if (n.present()) {
+		if (n.present()) {	// Simulating the visiting method of nodelist
 			if (n.node instanceof ExpressionList) {
 				ExpressionList list = (ExpressionList) n.node;
 				typelist.add(getIDType(list.f0.accept(this)));
@@ -849,7 +802,7 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 	 * f0 -> <INTEGER_LITERAL>
 	 */
 	public String visit(IntegerLiteral n) {
-		String _ret="int";
+		String _ret = "int";
 		n.f0.accept(this);
 		return _ret;
 	}
@@ -858,7 +811,7 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 	 * f0 -> "true"
 	 */
 	public String visit(TrueLiteral n) {
-		String _ret="boolean";
+		String _ret = "boolean";
 		n.f0.accept(this);
 		return _ret;
 	}
@@ -867,7 +820,7 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 	 * f0 -> "false"
 	 */
 	public String visit(FalseLiteral n) {
-		String _ret="boolean";
+		String _ret = "boolean";
 		n.f0.accept(this);
 		return _ret;
 	}
@@ -876,7 +829,7 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 	 * f0 -> <IDENTIFIER>
 	 */
 	public String visit(Identifier n) {
-		String _ret=null;
+		String _ret = null;
 		return n.f0.accept(this);
 	}
 
@@ -884,7 +837,7 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 	 * f0 -> "this"
 	 */
 	public String visit(ThisExpression n) {
-		String _ret=currClass.getName();
+		String _ret = currClass.getName();
 		n.f0.accept(this);
 		return _ret;
 	}
@@ -897,7 +850,7 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 	 * f4 -> "]"
 	 */
 	public String visit(ArrayAllocationExpression n) {
-		String _ret="int[]";
+		String _ret = "int[]";
 		n.f0.accept(this);
 		n.f1.accept(this);
 		n.f2.accept(this);
@@ -905,7 +858,6 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 		n.f4.accept(this);
 		if (!type.equals("int")) {
 			setError(true);
-			// this.error.complain("The size of integer should be an integer!");
 		}		
 		return _ret;
 	}
@@ -924,7 +876,6 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 		n.f3.accept(this);
 		if (this.sTable.findClass(_ret) == null) {
 			setError(true);
-			// this.error.complain("This class is not defined!!");
 		}
 		return _ret;
 	}
@@ -934,12 +885,11 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 	 * f1 -> Expression()
 	 */
 	public String visit(NotExpression n) {
-		String _ret="boolean";
+		String _ret = "boolean";
 		n.f0.accept(this);
 		String type = getIDType(n.f1.accept(this));
 		if (!type.equals("boolean")) {
 			setError(true);
-			// this.error.complain("I cannot make not operation on a non-boolean value");
 		}
 		return _ret;
 	}
@@ -950,7 +900,7 @@ public class TypeCheckVisitor implements GJNoArguVisitor<String> {
 	 * f2 -> ")"
 	 */
 	public String visit(BracketExpression n) {
-		String _ret=null;
+		String _ret = null;
 		n.f0.accept(this);
 		_ret = getIDType(n.f1.accept(this));
 		n.f2.accept(this);

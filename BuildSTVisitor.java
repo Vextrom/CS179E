@@ -211,7 +211,7 @@ public class BuildSTVisitor implements GJNoArguVisitor<String> {
 			this.error.complain("The class " + className + " has already been defined!");
 		} else {
 			setCurrentClass(_class);
-			this.currClass.SetBaseClass(this.sTable.findClass(baseClassName));
+			this.currClass.setBaseClass(this.sTable.findClass(baseClassName));
 			n.f4.accept(this);
 			n.f5.accept(this);
 			n.f6.accept(this);
